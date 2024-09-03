@@ -1,0 +1,114 @@
+version: "3.8"
+
+services:
+  # server:
+  #   build: ./Server
+  # server1:
+  #   build:
+  #     context: ./Server
+  #   image: distributed_systems_a-3-server:latest
+  #   environment:
+  #     - HOSTNAME=Server1 # Set the desired HOSTNAME as an example
+  #     - SERVER_ID=1
+  #     - DBNAME=DB1
+  #   depends_on:
+  #     - db1
+  #   ports:
+  #     - "5000:5000"
+  #   container_name: Server1
+  #   networks:
+  #     - net1
+
+  # server2:
+  #   image: distributed_systems_a-3-server:latest
+  #   environment:
+  #     - HOSTNAME=Server2 # Set the desired HOSTNAME as an example
+  #     - SERVER_ID=2
+  #   container_name: Server2
+  #   depends_on:
+  #     - server1
+  #   networks:
+  #     - net1
+
+  # server3:
+  #   image: distributed_systems_a-3-server:latest
+  #   environment:
+  #     - HOSTNAME=Server3 # Set the desired HOSTNAME as an example
+  #     - SERVER_ID=3
+  #   container_name: Server3
+  #   depends_on:
+  #     - server1
+  #   networks:
+  #     - net1
+
+  load_balancer:
+    build:
+      context: ./Load_Balancer
+    ports:
+      - "5000:5000"
+    networks:
+      - net1
+    depends_on:
+      - metadata_db
+    #   - server1
+    #   - server2
+    #   - server3
+    environment:
+      - DBNAME=metadata_db
+    #   - SERVER_NAMES=Server1,Server2,Server3
+    #   - COUNT=3
+    privileged: true
+    container_name: load_balancer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  shard_manager:
+    build:
+      context: ./Shard_Manager
+    ports:
+      - "5001:5000"
+    networks:
+      - net1
+    depends_on:
+      - load_balancer
+      - metadata_db
+    environment:
+      - DBNAME=metadata_db
+    privileged: true
+    container_name: shard_manager
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  metadata_db:
+    build:
+      context: ./Metadata_DB
+    # environment:
+    # - HOSTNAME=Server1 # Set the desired HOSTNAME as an example
+    # - SERVER_ID=1
+    # depends_on:
+    # - server1
+    ports:
+      - "5002:5000"
+    container_name: metadata_db
+    networks:
+      - net1
+    # volumes:
+    #   - ./db_scripts:/docker-entrypoint-initdb.d
+  # db1:
+  #   build:
+  #     context: ./Server_DB
+  #   image: distributed_systems_a-3-db1:latest
+  #   # environment:
+  #   # - HOSTNAME=Server1 # Set the desired HOSTNAME as an example
+  #   # - SERVER_ID=1
+  #   # depends_on:
+  #   # - server1
+  #   # ports:
+  #   # - "5001:5000"
+  #   container_name: DB1
+  #   networks:
+  #     - net1
+
+networks:
+  net1:
+    driver: bridge
